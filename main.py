@@ -105,7 +105,7 @@ class ExcelTableExtractor:
             return None, None, None, None  # or handle the error as needed
 
 
-def generate_timecard_csv(additional_info, table_summary, table_details, output_path):
+def generate_timecard_csv(additional_info, table_summary, table_details, output_path, block_index):
     """Generate a Timecard header CSV """
     try:
         # Prepare data for CSV
@@ -119,7 +119,7 @@ def generate_timecard_csv(additional_info, table_summary, table_details, output_
         date_to = datetime.strptime(date_range[1], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 1 else ''
 
         # Create a unique label for each timecard block
-        timecard_label = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{fileNumber}"
+        timecard_label = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{fileNumber}_{block_index}"
         print(f"Generating timecard with Label {timecard_label}")
         csv_data = {
             "company": companyCode,
@@ -234,7 +234,7 @@ def main():
         print(f"Found {len(timecard_blocks)} timecard blocks")
         print(timecard_blocks)
 
-        for start, end in timecard_blocks:
+        for index, (start, end) in enumerate(timecard_blocks):
             print(f"\n\nProcessing block from {start} to {end}")
             table_summary, table_details, table_totals, additional_info = extractor.process_timecard_block(start, end)
             if table_summary is None:
@@ -256,7 +256,7 @@ def main():
 
             # Generate CSV
             path = './generated_csv'
-            generate_timecard_csv(additional_info, table_summary, table_details, path)
+            generate_timecard_csv(additional_info, table_summary, table_details, path, index)
 
     except FileNotFoundError as e:
         print(f"File Error: {e}")
