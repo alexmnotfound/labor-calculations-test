@@ -27,14 +27,14 @@ class ExcelTableExtractor:
         positions_first_table = [self.find_keyword_positions(df, key) for key in keywords_first_table]
         positions_second_table = [self.find_keyword_positions(df, key) for key in keywords_second_table]
 
-        print(f"Positions of first table keywords: {positions_first_table}")
-        print(f"Positions of second table keywords: {positions_second_table}")
+        #print(f"Positions of first table keywords: {positions_first_table}")
+        #print(f"Positions of second table keywords: {positions_second_table}")
 
         if not positions_first_table[0] or not positions_first_table[1]:
-            print("Keywords for the first table not found.")
+            #print("Keywords for the first table not found.")
             raise ValueError("Keywords for the first table not found in the sheet.")
         if not positions_second_table[0] or not positions_second_table[1]:
-            print("Keywords for the first table not found.")
+            #print("Keywords for the first table not found.")
             raise ValueError("Keywords for the second table not found in the sheet.")
 
         start_pos_first, end_pos_first = min(positions_first_table[0]), max(positions_first_table[1])-1
@@ -54,9 +54,25 @@ class ExcelTableExtractor:
             'Overtime': 'OT',
             'Paid Time Off': 'PTO',
             'PAID UNION LUNCH': 'PUL',
-            'Regular': 'REG'
+            'Regular': 'REG',
+            'Paid Meal Award': 'PMA',
+            'Sick': 'SCK',
+            'Vacation': 'VAC',
+            'Graveyard Shift $0.85': 'GS85',
+            'Doubletime': 'DT',
+            'Graveyard Shift $0.40': 'GS40'
         }
 
+        '''
+        # uncomment to check unique missing paycodes
+        # Iterate through PAYCODE column and print values not in mappings
+        unmapped_paycodes = set()
+        for paycode in table_summary['PAYCODE']:
+            if paycode not in paycode_mappings:
+                unmapped_paycodes.add(paycode)
+
+        print("Unmapped Paycodes:", unmapped_paycodes)
+        '''
         # Add the equivalence column
         table_summary['EQUIV'] = table_summary['PAYCODE'].map(paycode_mappings)
 
@@ -101,27 +117,27 @@ class ExcelTableExtractor:
             additional_info = self.extract_additional_info(timecard_df)
             return table_summary, table_details, table_totals, additional_info
         except ValueError as e:
-            print(f"Error processing block: {e}")
+            #print(f"Error processing block: {e}")
             return None, None, None, None  # or handle the error as needed
 
 
 def generate_timecard_csv(additional_info, table_summary, table_details, output_path, block_index):
     """Generate a Timecard header CSV """
+    # Prepare data for CSV
+    companyCode = additional_info.get('Company Code', '')
+    fileNumber = f"000000{additional_info.get('File Number', '')}"[-6:]
+    employeeId = f"{companyCode}{fileNumber}"
+
+    # Extract and format dates
+    date_range = additional_info.get('Date Range', '').split(' - ')
+    date_from = datetime.strptime(date_range[0], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 0 else ''
+    date_to = datetime.strptime(date_range[1], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 1 else ''
+
+    # Create a unique label for each timecard block
+    timecard_label = f"{employeeId} - {date_from.replace('-', '/')} - {date_to.replace('-', '/')}"
+    timecard_label_filename = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{block_index}"
     try:
-        # Prepare data for CSV
-        companyCode = additional_info.get('Company Code', '')
-        fileNumber = f"000000{additional_info.get('File Number', '')}"[-6:]
-        employeeId = f"{companyCode}{fileNumber}"
-
-        # Extract and format dates
-        date_range = additional_info.get('Date Range', '').split(' - ')
-        date_from = datetime.strptime(date_range[0], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 0 else ''
-        date_to = datetime.strptime(date_range[1], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 1 else ''
-
-        # Create a unique label for each timecard block
-        timecard_label = f"{employeeId} - {date_from.replace('-', '/')} - {date_to.replace('-', '/')}"
-        timecard_label_filename = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{block_index}"
-        print(f"Generating timecard with Label {timecard_label}")
+        #print(f"Generating timecard with Label {timecard_label}")
         csv_data = {
             "company.companyCode": companyCode,
             "employee": employeeId,
@@ -149,7 +165,7 @@ def generate_timecard_csv(additional_info, table_summary, table_details, output_
         generate_timecard_details_csv(timecard_label, table_details, output_path, block_index)
 
     except Exception as e:
-        print(f"Error generating CSV: {e}")
+        print(f"Error generating CSV for Timecard {timecard_label}: {e}")
 
 
 def generate_timecard_details_csv(timecard_label, table_details, output_path, block_index):
@@ -167,7 +183,7 @@ def generate_timecard_details_csv(timecard_label, table_details, output_path, bl
                 '%Y-%m-%d %H:%M')
         except Exception as e:
             # Handle the case where TIMESTAMP is not in the expected format
-            print(f"Skipping row due to formatting error: {e}. Adding information as comment in the next row")
+            #print(f"Skipping row due to formatting error: {e}. Adding information as comment in the next row")
             notes = str(row.iloc[0])  # Save the first element of the row as a note if there's an error
             continue  # Skip this row
 
@@ -230,30 +246,30 @@ def main():
             raise FileNotFoundError(f"The file '{args.file_path}' does not exist.")
 
         extractor = ExcelTableExtractor(args.file_path, args.sheet_name)
-        print(f"Extracting tables...\n{extractor.df.head()}")
+        #print(f"Extracting tables...\n{extractor.df.head()}")
         timecard_blocks = find_timecard_blocks(extractor.df)
-        print(f"Found {len(timecard_blocks)} timecard blocks")
-        print(timecard_blocks)
+        #print(f"Found {len(timecard_blocks)} timecard blocks")
+        #print(timecard_blocks)
 
         for index, (start, end) in enumerate(timecard_blocks):
-            print(f"\n\nProcessing block from {start} to {end}")
+            #print(f"\n\nProcessing block from {start} to {end}")
             table_summary, table_details, table_totals, additional_info = extractor.process_timecard_block(start, end)
             if table_summary is None:
-                print(f"Skipping block from {start} to {end} due to errors")
+                #print(f"Skipping block from {start} to {end} due to errors")
                 continue
 
             # Extract additional information
             # additional_info = extractor.extract_additional_info()
-            print("----- Timecard Information: -----")
-            print(additional_info)
+            #print("----- Timecard Information: -----")
+            #print(additional_info)
 
             # Print the tables and total rows
-            print("\n----- Summary -----")
-            print(table_summary)
-            print("\n----- Details -----")
-            print(table_details)
-            print("\nTotals")
-            print(table_totals)
+            #print("\n----- Summary -----")
+            #print(table_summary)
+            #print("\n----- Details -----")
+            #print(table_details)
+            #print("\nTotals")
+            #print(table_totals)
 
             # Generate CSV
             path = './generated_csv'
