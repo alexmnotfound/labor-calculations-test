@@ -37,10 +37,10 @@ class ExcelTableExtractor:
             print("Keywords for the first table not found.")
             raise ValueError("Keywords for the second table not found in the sheet.")
 
-        start_pos_first, end_pos_first = min(positions_first_table[0]), max(positions_first_table[1])
+        start_pos_first, end_pos_first = min(positions_first_table[0]), max(positions_first_table[1])-1
         table_summary = df.loc[start_pos_first:end_pos_first + 1].dropna(how='all')
 
-        start_pos_second, end_pos_second = min(positions_second_table[0]), max(positions_second_table[1])
+        start_pos_second, end_pos_second = min(positions_second_table[0]), max(positions_second_table[1])-1
         table_details = df.loc[start_pos_second:end_pos_second + 1].dropna(how='all')
 
         # Clean the tables by removing columns with only NaN, NULL, or NaT values
@@ -119,10 +119,11 @@ def generate_timecard_csv(additional_info, table_summary, table_details, output_
         date_to = datetime.strptime(date_range[1], '%m/%d/%Y').strftime('%Y-%m-%d') if len(date_range) > 1 else ''
 
         # Create a unique label for each timecard block
-        timecard_label = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{fileNumber}_{block_index}"
+        timecard_label = f"{employeeId} - {date_from.replace('-', '/')} - {date_to.replace('-', '/')}"
+        timecard_label_filename = f"{employeeId}_{date_from.replace('-', '')}_{date_to.replace('-', '')}_{block_index}"
         print(f"Generating timecard with Label {timecard_label}")
         csv_data = {
-            "company": companyCode,
+            "company.companyCode": companyCode,
             "employee": employeeId,
             "dateFrom": date_from,
             "dateTo": date_to,
@@ -137,7 +138,7 @@ def generate_timecard_csv(additional_info, table_summary, table_details, output_
             csv_data[f"summary[{i}].paycode"] = row['EQUIV']
             csv_data[f"summary[{i}].hours"] = row['HOURS']
 
-        output_file = f"{output_path}/headers/Timecard_Header_{timecard_label.replace('/', '-')}.csv"
+        output_file = f"{output_path}/headers/Timecard_Header_{timecard_label_filename.replace('/', '-')}.csv"
         # Write to CSV
         with open(output_file, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_data.keys())
@@ -145,13 +146,13 @@ def generate_timecard_csv(additional_info, table_summary, table_details, output_
             writer.writerow(csv_data)
 
         # Generate timecard details CSV
-        generate_timecard_details_csv(timecard_label, table_details, output_path)
+        generate_timecard_details_csv(timecard_label, table_details, output_path, block_index)
 
     except Exception as e:
         print(f"Error generating CSV: {e}")
 
 
-def generate_timecard_details_csv(timecard_label, table_details, output_path):
+def generate_timecard_details_csv(timecard_label, table_details, output_path, block_index):
     # Prepare data for CSV
     csv_rows = []
     notes = ""  # Initialize notes as an empty string
@@ -190,7 +191,7 @@ def generate_timecard_details_csv(timecard_label, table_details, output_path):
 
         csv_rows.append(csv_row)
 
-    output_file = f"{output_path}/details/Timecard_Details_{timecard_label.replace('/', '-')}.csv"
+    output_file = f"{output_path}/details/Timecard_Details_{timecard_label.replace('/', '').replace(' - ', '_')}_{block_index}.csv"
     # Write to CSV
     with open(output_file, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_rows[0].keys())
